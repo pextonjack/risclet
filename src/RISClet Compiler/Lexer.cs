@@ -114,8 +114,8 @@ namespace RISClet_Compiler
                     '-' => TokenType.Minus,
                     '*' => TokenType.Multiply,
                     '/' => TokenType.Divide,
-                    '(' => TokenType.LeftParenth,
-                    ')' => TokenType.RightParenth,
+                    '(' => TokenType.LeftParen,
+                    ')' => TokenType.RightParen,
                     _ => null
                 };
                 if (singleCharType != null)
@@ -159,7 +159,7 @@ namespace RISClet_Compiler
         #region Debugging
         public override string ToString()
         {
-            return $"{Type} \"{Lexeme}\" (Line {Line}, Col {Column})";
+            return $"[{Type} \"{Lexeme}\" (Line {Line}, Col {Column})]";
         }
         #endregion
     }
@@ -181,8 +181,8 @@ namespace RISClet_Compiler
 		// Punctuation
 		Colon,
 		Semicolon,
-		LeftParenth,
-		RightParenth,
+		LeftParen,
+		RightParen,
 
 		// Keywords (mostly not useful in Phase 1)
 		If, Elseif, Else, While, Output, Return,

@@ -6,9 +6,16 @@ namespace RISClet_Compiler
 {
 	public class FileManager
 	{
+        /// <summary>
+        /// Reads all text from the given path, replacing Windows line endings (\r\n) with Unix line endings (\n), and returning as a string
+        /// </summary>
+        /// <param name="path"></param>
+        /// <returns>String of text file</returns>
 		public static string ReadText(string path)
 		{
-            return File.ReadAllText(path) ?? "";
+            string code = File.ReadAllText(path);
+            code = code.ReplaceLineEndings("\n");
+            return code;
         }
     }
 }
