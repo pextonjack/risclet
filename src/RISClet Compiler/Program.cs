@@ -19,7 +19,6 @@ class Program
 
         Console.WriteLine("\n\nAST:");
         var ast = Parser.Parse(tokens);
-        
     }
 }
 

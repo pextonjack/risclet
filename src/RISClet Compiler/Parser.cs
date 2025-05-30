@@ -67,18 +67,28 @@ namespace RISClet_Compiler
             // Case 3: Subroutine call (only Output(val) for Phase 1) ([identifier] [leftparenth] [...] [rightparenth])
             else if (tokens.Count >= 2 && tokens[0].Type == TokenType.Identifier && tokens[1].Type == TokenType.LeftParen && tokens[^1].Type == TokenType.RightParen)
             {
-                // Skip this, implement later when adding custom procedures
-                /*
-                List<ASTNode> parameterNodes = new();
-                foreach (var token in tokens[2..(tokens.Count - 1)])
-                {
-                    parameterNodes.Add(ParseExpression(t))
-                }
-                returnVal = new SubroutineCallNode(tokens[0].Lexeme, parameterNodes);
-                */
+                // This doesn't work for nested commas or brackets (e.g. Procedure((3,4), 5); it's a tuple, which is both nested brackets AND nested commas)
+                List<Token> currentParam = new();
+                List<ASTNode> parameters = new();
 
-                // Assume only a single parameter for now
-                returnVal = new SubroutineCallNode(tokens[0].Lexeme, new List<ASTNode>() { ParseExpression(tokens[2..(tokens.Count - 1)]) });
+                for (int i = 2; i < tokens.Count - 1; i++)
+                {
+                    if (tokens[i].Type == TokenType.Comma)
+                    {
+                        // Current expression is done; parse the current expression
+                        if (currentParam.Count == 0) ErrorReporter.CompilerError("Empty argument", (tokens[i].Line, tokens[i].Column));
+                        parameters.Add(ParseExpression(currentParam)); // EXCLUDES SEMICOLON
+
+                        currentParam.Clear();
+                        continue;
+                    }
+                    else
+                    {
+                        currentParam.Add(tokens[i]);
+                    }
+                }
+
+                returnVal = new SubroutineCallNode(tokens[0].Lexeme, parameters);
             }
 
             if (returnVal == null)

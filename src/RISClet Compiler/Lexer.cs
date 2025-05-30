@@ -115,6 +115,7 @@ namespace RISClet_Compiler
                     '/' => TokenType.Divide,
                     '(' => TokenType.LeftParen,
                     ')' => TokenType.RightParen,
+                    ',' => TokenType.Comma,
                     _ => null
                 };
                 if (singleCharType != null)
@@ -182,6 +183,7 @@ namespace RISClet_Compiler
 		Semicolon,
 		LeftParen,
 		RightParen,
+        Comma,
 
 		// Keywords (mostly not useful in Phase 1)
 		If, Elseif, Else, While, Output, Return,
