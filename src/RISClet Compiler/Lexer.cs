@@ -22,7 +22,6 @@ namespace RISClet_Compiler
         {
             return identifier switch
             {
-                "Output" => TokenType.Output, // Output is a special identifier unlike other procedures, included in system
                 "if" => TokenType.If,
                 "elseif" => TokenType.Elseif,
                 "else" => TokenType.Else,
@@ -110,8 +109,8 @@ namespace RISClet_Compiler
                     ':' => TokenType.Colon,
                     ';' => TokenType.Semicolon,
                     '=' => TokenType.Assign,
-                    '+' => TokenType.Plus,
-                    '-' => TokenType.Minus,
+                    '+' => TokenType.Add,
+                    '-' => TokenType.Subtract,
                     '*' => TokenType.Multiply,
                     '/' => TokenType.Divide,
                     '(' => TokenType.LeftParen,
@@ -173,8 +172,8 @@ namespace RISClet_Compiler
 
 		// Operators
 		Assign,
-		Plus,
-		Minus,
+		Add,
+		Subtract,
 		Divide,
 		Multiply,
 

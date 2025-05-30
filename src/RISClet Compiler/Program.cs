@@ -16,6 +16,10 @@ class Program
         {
             Console.Write(token.ToString() + " ");
         }
+
+        Console.WriteLine("\n\nAST:");
+        var ast = Parser.Parse(tokens);
+        
     }
 }
 
