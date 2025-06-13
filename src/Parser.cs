@@ -12,7 +12,7 @@ namespace RISClet_Compiler
         // 2. Parse expression
         // 3. Add to program node
 
-        public static ProgramNode Parse(Token[] tokens)
+        public ProgramNode Parse(Token[] tokens)
         {
             ProgramNode programNode = new();
 
@@ -40,7 +40,7 @@ namespace RISClet_Compiler
 
         // For phase 1, this only works for one-line simple statements (i.e. no code blocks (subroutines, if-else statements, etc.), no complex arithmetic operations (e.g. x = 3 * 4 - 5))
         // This assumes that there IS NOT a semicolon on the end of statements
-        public static ASTNode ParseStatement(List<Token> tokens)
+        public ASTNode ParseStatement(List<Token> tokens)
         {
             if (tokens.Count == 0) ErrorReporter.CompilerError("Empty statement", (-1, -1)); // -1, -1 because there IS no token to extract line and column number from
 
@@ -98,7 +98,7 @@ namespace RISClet_Compiler
         }
 
         // Typically used for binary expressions e.g. 3 + 4; only works for basic '<left> operator <right>' expressions for Phase 1
-        public static ASTNode ParseExpression(List<Token> tokens)
+        public ASTNode ParseExpression(List<Token> tokens)
         {
             // Special case: Expression is only of a single item
             if (tokens.Count == 1)
@@ -125,7 +125,7 @@ namespace RISClet_Compiler
             return new BinaryExpressionNode(op.Value, left, right);
         }
 
-        private static ASTNode ParseAtomic(Token token)
+        private ASTNode ParseAtomic(Token token)
         {
             if (token.Type == TokenType.Identifier)
             {
@@ -200,7 +200,7 @@ namespace RISClet_Compiler
     }
     public enum BinaryOpType { Add, Subtract, Multiply, Divide }
 
-    public class IntegerLiteralNode : ASTNode
+    public class IntegerLiteralNode : ASTNode, IDataItem
     {
         public int Value { get; set; }
 
@@ -210,7 +210,7 @@ namespace RISClet_Compiler
         }
     }
 
-    public class IdentifierNode : ASTNode
+    public class IdentifierNode : ASTNode, IDataItem
     {
         public string Name { get; set; }
 
@@ -237,6 +237,8 @@ namespace RISClet_Compiler
         }
     }
 
+    // Useful for generalising items of data used in expression e.g. binary operations
+    public interface IDataItem { }
 
     #endregion
 }

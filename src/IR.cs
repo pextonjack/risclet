@@ -6,6 +6,15 @@ namespace RISClet_Compiler
 	/// </summary>
 	public class IR
 	{
+		public IR()
+		{
+			variables = new();
+            //intermediateVariables = new();
+        }
+
+		private Dictionary<string, DataType> variables;
+		//private Dictionary<int, DataType> intermediateVariables;
+
 		/*
 		 * If given an expression like x: Int32 = 3 + 4; you cannot simply write this as a single IR instruction
 		 * You must instead rewrite it as something like:
@@ -15,7 +24,7 @@ namespace RISClet_Compiler
 		 * BUT, you cannot ASSUME that all incoming variable assignment and declaration statements are as such...
 		 * ...SO, you must determine whether adding a temporary variable instruction is necessary for every declaration statement
 		 */
-		public static List<IRInstruction> GenerateTupleIR(ProgramNode programNode)
+		public (List<IRInstruction>, Dictionary<string, DataType>/*, Dictionary<int, DataType>*/) GenerateTupleIR(ProgramNode programNode)
 		{
 			List<IRInstruction> instructions = new();
 
@@ -24,17 +33,14 @@ namespace RISClet_Compiler
 			{
 				ASTNode currentNode = programNode.Statements[i];
 
-				if (currentNode is VariableDeclarationNode varDeclare)
+				if (currentNode is VariableDeclarationNode varDeclare || currentNode is AssignmentNode varAssign)
 				{
-					
-                }
-                else if (currentNode is AssignmentNode varAssign)
-                {
-					
+					instructions.AddRange(ProcessComplexInstruction(currentNode));
                 }
 				else if (currentNode is SubroutineCallNode subCall)
 				{
-
+					// Currently assumes only a single parameter, in the case of the Output(x) function
+					instructions.Add(new IRSubroutineCallInstruction(subCall.Name, new DataItem[] { ConvertNodeToDataItem(subCall.Arguments[0]) }));
 				}
 				else
 				{
@@ -42,7 +48,46 @@ namespace RISClet_Compiler
 				}
             }
 
-			return instructions;
+			return (instructions, variables);//, intermediateVariables);
+		}
+
+		public List<IRInstruction> ProcessComplexInstruction(ASTNode node)
+		{
+			List<IRInstruction> instructions = new();
+
+			// Case 1: VariableDeclaration
+			if (node is VariableDeclarationNode varDeclare)
+			{
+                // Case A: variable declaration of no item (e.g. x: Int32;)
+                if (varDeclare.Initialiser == null)
+				{
+                    instructions.Add(new IRVariableDeclarationInstruction(varDeclare.Identifier, GetDataType(varDeclare.Type)));
+                }
+
+                // Case B: variable declaration of a single "item" (e.g. x: Int32 = 3;)
+                if (varDeclare.Initialiser is IDataItem dataItem)
+				{
+					instructions.Add(new IRVariableDeclarationInstruction(varDeclare.Identifier, GetDataType(varDeclare.Type), ConvertNodeToDataItem(varDeclare.Initialiser)));
+				}
+
+                // Case C: variable declaration of an expression with 2 "items" (e.g. x: Int32 = y + 3;)
+                if (varDeclare.Initialiser is BinaryExpressionNode binExpression)
+                {
+					// This assumes only a maximum of a+b (2 operands)
+					// This reserves the intermdiate variable value t1
+
+					// TODO: Deal with temporary variables?
+
+                    instructions.Add(new IRVariableDeclarationInstruction(varDeclare.Identifier, GetDataType(varDeclare.Type), new DataItem("t1", true)));
+                }
+            }
+            // Case 2: Variable Assignment
+            else if (node is AssignmentNode varAssign)
+            {
+
+            }
+
+            return instructions;
 		}
 
 		public static DataItem ConvertNodeToDataItem(ASTNode node)
@@ -94,6 +139,12 @@ namespace RISClet_Compiler
     {
 		public string VarIdent;
         public DataItem Value;
+
+		public IRVariableAssignmentInstruction(string ident, DataItem val)
+		{
+			VarIdent = ident;
+			Value = val;
+		}
     }
 
     public class IRSubroutineCallInstruction : IRInstruction

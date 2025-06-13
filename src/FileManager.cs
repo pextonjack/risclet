@@ -11,7 +11,7 @@ namespace RISClet_Compiler
         /// </summary>
         /// <param name="path"></param>
         /// <returns>String of text file</returns>
-		public static string ReadText(string path)
+		public string ReadText(string path)
 		{
             string code = File.ReadAllText(path);
             code = code.ReplaceLineEndings("\n");

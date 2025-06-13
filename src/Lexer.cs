@@ -30,7 +30,7 @@ namespace RISClet_Compiler
         }
         #endregion
 
-        public static Token[] Tokenise(string code)
+        public Token[] Tokenise(string code)
         {
             List<Token> tokens = new();
             int line = 1;

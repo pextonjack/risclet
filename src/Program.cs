@@ -7,10 +7,10 @@ class Program
 {
     static void Main(string[] args)
     {
-        string src = FileManager.ReadText("/Users/jackpexton/Desktop/code.risclet");
+        string src = new FileManager().ReadText("/Users/jackpexton/Desktop/code.risclet");
         Console.WriteLine("Original source code:\n" + src + "\n");
 
-        var tokens = Lexer.Tokenise(src);
+        var tokens = new Lexer().Tokenise(src);
         Console.WriteLine("Tokens:");
         foreach (var token in tokens)
         {
@@ -18,7 +18,7 @@ class Program
         }
 
         Console.WriteLine("\n\nAST:");
-        var ast = Parser.Parse(tokens);
+        var ast = new Parser().Parse(tokens);
     }
 }
 
