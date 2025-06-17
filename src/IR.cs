@@ -9,7 +9,6 @@ namespace RISClet_Compiler
 		public IR()
 		{
 			variables = new();
-            //intermediateVariables = new();
         }
 
 		private Dictionary<string, DataType> variables;
@@ -24,7 +23,7 @@ namespace RISClet_Compiler
 		 * BUT, you cannot ASSUME that all incoming variable assignment and declaration statements are as such...
 		 * ...SO, you must determine whether adding a temporary variable instruction is necessary for every declaration statement
 		 */
-		public (List<IRInstruction>, Dictionary<string, DataType>/*, Dictionary<int, DataType>*/) GenerateTupleIR(ProgramNode programNode)
+		public IRProgram GenerateTupleIR(ProgramNode programNode)
 		{
 			List<IRInstruction> instructions = new();
 
@@ -48,43 +47,65 @@ namespace RISClet_Compiler
 				}
             }
 
-			return (instructions, variables);//, intermediateVariables);
+			return new IRProgram(instructions, variables);//, intermediateVariables);
 		}
 
 		public List<IRInstruction> ProcessComplexInstruction(ASTNode node)
 		{
+			int tempCounter = 0; // Keeps track of number of temporary variables needed at once. Resets to zero between independent code blocks
+
 			List<IRInstruction> instructions = new();
 
 			// Case 1: VariableDeclaration
 			if (node is VariableDeclarationNode varDeclare)
 			{
+				if (!variables.ContainsKey(varDeclare.Identifier))
+					variables.Add(varDeclare.Identifier, GetDataType(varDeclare.Type)); // Add to dictionary
+
                 // Case A: variable declaration of no item (e.g. x: Int32;)
                 if (varDeclare.Initialiser == null)
 				{
                     instructions.Add(new IRVariableDeclarationInstruction(varDeclare.Identifier, GetDataType(varDeclare.Type)));
                 }
 
-                // Case B: variable declaration of a single "item" (e.g. x: Int32 = 3;)
-                if (varDeclare.Initialiser is IDataItem dataItem)
+				// Case B: variable declaration of a single "item" (e.g. x: Int32 = 3;)
+				else if (varDeclare.Initialiser is IDataItem dataItem)
 				{
 					instructions.Add(new IRVariableDeclarationInstruction(varDeclare.Identifier, GetDataType(varDeclare.Type), ConvertNodeToDataItem(varDeclare.Initialiser)));
 				}
 
                 // Case C: variable declaration of an expression with 2 "items" (e.g. x: Int32 = y + 3;)
-                if (varDeclare.Initialiser is BinaryExpressionNode binExpression)
+                else if (varDeclare.Initialiser is BinaryExpressionNode binExpression)
                 {
 					// This assumes only a maximum of a+b (2 operands)
 					// This reserves the intermdiate variable value t1
 
-					// TODO: Deal with temporary variables?
+					instructions.Add(new IRBinaryOperationInstruction(binExpression.Operator, ConvertNodeToDataItem(binExpression.Left), ConvertNodeToDataItem(binExpression.Right), tempCounter));
+                    tempCounter++;
 
-                    instructions.Add(new IRVariableDeclarationInstruction(varDeclare.Identifier, GetDataType(varDeclare.Type), new DataItem("t1", true)));
+                    instructions.Add(new IRVariableDeclarationInstruction(varDeclare.Identifier, GetDataType(varDeclare.Type), new TempDataItem(0)));
                 }
             }
             // Case 2: Variable Assignment
             else if (node is AssignmentNode varAssign)
             {
+                // Case A: variable assignment of a single "item" (e.g. x = 3;)
+                if (varAssign.Expression is IDataItem dataItem)
+                {
+                    instructions.Add(new IRVariableAssignmentInstruction(varAssign.Identifier, ConvertNodeToDataItem(varAssign.Expression)));
+                }
 
+                // Case B: variable assignment of an expression with 2 "items" (e.g. x = y + 3;)
+                else if (varAssign.Expression is BinaryExpressionNode binExpression)
+                {
+                    // This assumes only a maximum of a+b (2 operands)
+                    // This reserves the intermdiate variable value t1
+
+                    instructions.Add(new IRBinaryOperationInstruction(binExpression.Operator, ConvertNodeToDataItem(binExpression.Left), ConvertNodeToDataItem(binExpression.Right), tempCounter));
+                    tempCounter++;
+
+                    instructions.Add(new IRVariableAssignmentInstruction(varAssign.Identifier, new TempDataItem(0)));
+                }
             }
 
             return instructions;
@@ -100,6 +121,8 @@ namespace RISClet_Compiler
             {
                 return new DataItem(ident.Name, isIdent: true);
             }
+
+			ErrorReporter.CompilerError("Invalid data item", (-1, -1));
 			return new DataItem(0);
         }
 
@@ -112,6 +135,18 @@ namespace RISClet_Compiler
 			};
 		}
     }
+
+	public class IRProgram
+	{
+		public List<IRInstruction> Instructions { get; set; }
+		public Dictionary<string, DataType> Variables { get; set; }
+
+		public IRProgram(List<IRInstruction> instructions, Dictionary<string, DataType> variables)
+		{
+			Instructions = instructions;
+			Variables = variables;
+		}
+	}
 
 	public abstract class IRInstruction { }
 
@@ -147,6 +182,20 @@ namespace RISClet_Compiler
 		}
     }
 
+	/*
+	public class IRTempAssignmentInstruction : IRInstruction
+	{
+		public int TempVarID;
+		public int IntValue; // Currently only works for integers; AArch64 registers can only store 64-bit values anyway
+
+		public IRTempAssignmentInstruction(int varID, int value)
+		{
+			TempVarID = varID;
+			IntValue = value;
+		}
+	}
+	*/
+
     public class IRSubroutineCallInstruction : IRInstruction
 	{
 		public string SubroutineIdent;
@@ -164,12 +213,15 @@ namespace RISClet_Compiler
         public BinaryOpType OpType;
 		public DataItem Left;
 		public DataItem Right;
+		public int TempID;
 
-		public IRBinaryOperationInstruction(BinaryOpType opType, DataItem left, DataItem right)
+		public IRBinaryOperationInstruction(BinaryOpType opType, DataItem left, DataItem right, int tempID)
 		{
 			OpType = opType;
 			Left = left;
 			Right = right;
+
+			TempID = tempID;
 		}
 	}
 
@@ -200,6 +252,16 @@ namespace RISClet_Compiler
             }
         }
     }
+
+	public class TempDataItem : DataItem
+	{
+		public int tempVarID;
+
+		public TempDataItem(int id) : base(0)
+		{
+			tempVarID = id;
+		}
+	}
 
 	public enum DataType
 	{
