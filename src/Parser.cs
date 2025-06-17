@@ -88,6 +88,9 @@ namespace RISClet_Compiler
                     }
                 }
 
+                if (currentParam.Count > 0)
+                    parameters.Add(ParseExpression(currentParam));
+
                 returnVal = new SubroutineCallNode(tokens[0].Lexeme, parameters);
             }
 
@@ -106,7 +109,10 @@ namespace RISClet_Compiler
                 return ParseAtomic(tokens[0]);
             }
 
-            if (tokens.Count == 2) ErrorReporter.CompilerError("Malformed expression", (tokens[0].Line, tokens[0].Column));
+            if (tokens.Count == 2)
+            {
+                ErrorReporter.CompilerError($"Malformed expression: ({tokens[0]}, {tokens[1]})", (tokens[0].Line, tokens[0].Column));
+            }
 
             BinaryOpType? op = tokens[1].Type switch
             {

@@ -30,7 +30,7 @@ namespace RISClet_Compiler
             // Iterate through all statements in the program, and convert to Tuple IR
             for (int i = 0; i < programNode.Statements.Count; i++)
 			{
-				ASTNode currentNode = programNode.Statements[i];
+                ASTNode currentNode = programNode.Statements[i];
 
 				if (currentNode is VariableDeclarationNode varDeclare || currentNode is AssignmentNode varAssign)
 				{
@@ -146,7 +146,26 @@ namespace RISClet_Compiler
 			Instructions = instructions;
 			Variables = variables;
 		}
-	}
+
+        public override string ToString()
+        {
+			System.Text.StringBuilder s = new();
+
+			s.Append("Tuple IR: \n");
+			for (int i = 0; i < Instructions.Count; i++)
+			{
+				s.Append(Instructions[i].ToString() + '\n');
+			}
+
+			s.Append("\nVariables: \n");
+			foreach (KeyValuePair<string, DataType> p in Variables)
+			{
+				s.Append($"{p.Key}: {p.Value}\n");
+			}
+
+			return s.ToString();
+        }
+    }
 
 	public abstract class IRInstruction { }
 
@@ -168,6 +187,18 @@ namespace RISClet_Compiler
             Type = type;
 			Value = value;
         }
+
+        public override string ToString()
+        {
+            if (Value == null)
+			{
+				return $"(DECLARE, {VarIdent}, {Type})";
+            }
+			else
+			{
+                return $"(DECLARE, {VarIdent}, {Type}, {Value})";
+            }
+        }
     }
 
     public class IRVariableAssignmentInstruction : IRInstruction
@@ -180,6 +211,11 @@ namespace RISClet_Compiler
 			VarIdent = ident;
 			Value = val;
 		}
+
+        public override string ToString()
+        {
+			return $"(ASSIGN, {VarIdent}, {Value})";
+        }
     }
 
 	/*
@@ -206,9 +242,16 @@ namespace RISClet_Compiler
 			SubroutineIdent = ident;
 			Parameters = parameters;
 		}
-	}
 
-	public class IRBinaryOperationInstruction : IRInstruction
+        public override string ToString()
+        {
+            string args = string.Join(", ", Parameters.Select(p => p.ToString()));
+            return $"(CALL, {SubroutineIdent}, {args})";
+        }
+
+    }
+
+    public class IRBinaryOperationInstruction : IRInstruction
 	{
         public BinaryOpType OpType;
 		public DataItem Left;
@@ -223,7 +266,12 @@ namespace RISClet_Compiler
 
 			TempID = tempID;
 		}
-	}
+
+        public override string ToString()
+        {
+            return $"({OpType.ToString().ToUpper()}, {Left}, {Right}, t{TempID})";
+        }
+    }
 
 	public class DataItem
 	{
@@ -251,9 +299,20 @@ namespace RISClet_Compiler
                 Type = DataItemType.StringLiteral;
             }
         }
+
+        public override string ToString()
+        {
+            return Type switch
+            {
+                DataItemType.Identifier => Identifier!,
+                DataItemType.IntLiteral => IntLiteral!.Value.ToString(),
+                DataItemType.StringLiteral => $"\"{StringLiteral}\"",
+                _ => "<UNKNOWN>"
+            };
+        }
     }
 
-	public class TempDataItem : DataItem
+    public class TempDataItem : DataItem
 	{
 		public int tempVarID;
 
@@ -261,9 +320,14 @@ namespace RISClet_Compiler
 		{
 			tempVarID = id;
 		}
-	}
 
-	public enum DataType
+        public override string ToString()
+        {
+            return $"t{tempVarID}";
+        }
+    }
+
+    public enum DataType
 	{
 		Int32,
 		String,

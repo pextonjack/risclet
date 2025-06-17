@@ -19,6 +19,13 @@ class Program
 
         Console.WriteLine("\n\nAST:");
         var ast = new Parser().Parse(tokens);
+        foreach (ASTNode n in ast.Statements)
+        {
+            Console.WriteLine(n.GetType().ToString());
+        }
+
+        Console.WriteLine("\n\nIR:");
+        var ir = new IR().GenerateTupleIR(ast);
+        Console.WriteLine(ir.ToString());
     }
 }
-
