@@ -27,5 +27,9 @@ class Program
         Console.WriteLine("\n\nIR:");
         var ir = new IR().GenerateTupleIR(ast);
         Console.WriteLine(ir.ToString());
+
+        Console.WriteLine("\n\nAssembly:");
+        var code = new CodeGenerator().GenerateCode(ir);
+        Console.WriteLine(code);
     }
 }
