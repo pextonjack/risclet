@@ -38,8 +38,8 @@ namespace RISClet_Compiler
                 }
 				else if (currentNode is SubroutineCallNode subCall)
 				{
-					// Currently assumes only a single parameter, in the case of the Output(x) function
-					instructions.Add(new IRSubroutineCallInstruction(subCall.Name, new DataItem[] { ConvertNodeToDataItem(subCall.Arguments[0]) }));
+                    // [ASSUMPTION] Currently assumes only a single parameter, in the case of the Output(x) function
+                    instructions.Add(new IRSubroutineCallInstruction(subCall.Name, new DataItem[] { ConvertNodeToDataItem(subCall.Arguments[0]) }));
 				}
 				else
 				{
@@ -77,7 +77,7 @@ namespace RISClet_Compiler
                 // Case C: variable declaration of an expression with 2 "items" (e.g. x: Int32 = y + 3;)
                 else if (varDeclare.Initialiser is BinaryExpressionNode binExpression)
                 {
-					// This assumes only a maximum of a+b (2 operands)
+					// [ASSUMPTION] This assumes only a maximum of a+b (2 operands)
 					// This reserves the intermdiate variable value t1
 
 					instructions.Add(new IRBinaryOperationInstruction(binExpression.Operator, ConvertNodeToDataItem(binExpression.Left), ConvertNodeToDataItem(binExpression.Right), tempCounter));
@@ -98,7 +98,7 @@ namespace RISClet_Compiler
                 // Case B: variable assignment of an expression with 2 "items" (e.g. x = y + 3;)
                 else if (varAssign.Expression is BinaryExpressionNode binExpression)
                 {
-                    // This assumes only a maximum of a+b (2 operands)
+                    // [ASSUMPTION] This assumes only a maximum of a+b (2 operands)
                     // This reserves the intermdiate variable value t1
 
                     instructions.Add(new IRBinaryOperationInstruction(binExpression.Operator, ConvertNodeToDataItem(binExpression.Left), ConvertNodeToDataItem(binExpression.Right), tempCounter));

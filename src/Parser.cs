@@ -39,7 +39,7 @@ namespace RISClet_Compiler
         }
 
         // For phase 1, this only works for one-line simple statements (i.e. no code blocks (subroutines, if-else statements, etc.), no complex arithmetic operations (e.g. x = 3 * 4 - 5))
-        // This assumes that there IS NOT a semicolon on the end of statements
+        // [ASSUMPTION] This assumes that there IS NOT a semicolon on the end of statements
         public ASTNode ParseStatement(List<Token> tokens)
         {
             if (tokens.Count == 0) ErrorReporter.CompilerError("Empty statement", (-1, -1)); // -1, -1 because there IS no token to extract line and column number from
