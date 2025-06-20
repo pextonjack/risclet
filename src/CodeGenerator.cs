@@ -11,6 +11,8 @@ namespace RISClet_Compiler
 			string codeHeader = """
 // ───────────────────────────────────────────────────────────
 // prog.s (Main Program)
+// Auto-compiled by the RISClet compiler
+// For more information, see https://github.com/pextonjack/risclet
 // ───────────────────────────────────────────────────────────
 """;
 
@@ -122,7 +124,7 @@ _start:
                     instructions.Add(MoveLiteralIntoRegister(0, subCall.Parameters[0].IntLiteral.Value));
                 }
 
-                instructions.Add("bl " + subCall.SubroutineIdent);
+                instructions.Add("bl " + SubroutineIdentifier(subCall.SubroutineIdent));
             }
 
             // Case 4: IRBinaryOperationInstruction
@@ -200,7 +202,7 @@ _start:
         public static string MoveLiteralIntoRegister(int dest, int value) => $"mov w{dest}, #{value}";
 
         public static string LoadVariableAddress(int destReg, string ident) => $"ldr x{destReg}, ={ident}";
-        public static string LoadVariableValue(int destReg, int addrReg) => $"ldr w{destReg}, [x{addrReg}]"; // [ASSUMPTION] Int32
+        public static string LoadVariableValue(int destReg, int addrReg) => $"ldrsw x{destReg}, [x{addrReg}]"; // [ASSUMPTION] Int32, based on sign extending and use of w register
         public static string StoreVariableValue(int sourceReg, int addrReg) => $"str w{sourceReg}, [x{addrReg}]"; // [ASSUMPTION] Int32
 
         public static string IRVariableToAssembly(KeyValuePair<string, DataType> variable)
@@ -208,12 +210,21 @@ _start:
 			return variable.Key + ": " + DataTypeToAssembly(variable.Value) + " " + Constants.DataTypeDefaultValue(variable.Value);
 		}
 
+        public static string SubroutineIdentifier(string subroutineIdent)
+        {
+            return subroutineIdent switch
+            {
+                "Output" => "printint",
+                _ => subroutineIdent
+            };
+        }
+
 		public static string DataTypeToAssembly(DataType type)
 		{
 			string? t = type switch
 			{
-				DataType.Int32 => "word",
-                DataType.String => "ascii",
+				DataType.Int32 => ".word",
+                DataType.String => ".ascii",
                 _ => null
 			};
 			if (t == null)

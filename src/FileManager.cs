@@ -17,6 +17,11 @@ namespace RISClet_Compiler
             code = code.ReplaceLineEndings("\n");
             return code;
         }
+
+        public void SaveText(string path, string text)
+        {
+            File.WriteAllText(path, text);
+        }
     }
 }
 
