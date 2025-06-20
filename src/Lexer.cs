@@ -59,7 +59,19 @@ namespace RISClet_Compiler
                     continue;
                 }
 
-                // Case 3: Identifier or keyword
+                // Case 3: Comment (starts with //) => Skip to end of line
+                if (current == '/' && i + 1 < code.Length && code[i + 1] == '/')
+                {
+                    // Skip characters until newline or end of code
+                    while (i < code.Length && code[i] != '\n')
+                    {
+                        i++;
+                        column++;
+                    }
+                    continue;
+                }
+
+                // Case 4: Identifier or keyword
                 if (IsIdentifierStart(current))
                 {
                     int start = i;
@@ -79,7 +91,7 @@ namespace RISClet_Compiler
                     continue;
                 }
 
-                // Case 4: Check if it's a number (i.e. int)
+                // Case 5: Check if it's a number (i.e. int)
                 if (char.IsDigit(current))
                 {
                     int start = i;
