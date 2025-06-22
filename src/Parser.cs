@@ -5,6 +5,7 @@ namespace RISClet_Compiler
 {
 	/// <summary>
 	/// Parses tokens into ASTs
+    /// [ASSUMPTION] This is currently NOT a recursive descent parser, although that would be a good idea
 	/// </summary>
 	public class Parser
 	{
