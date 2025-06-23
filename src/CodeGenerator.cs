@@ -6,7 +6,7 @@ namespace RISClet_Compiler
 	/// </summary>
 	public class CodeGenerator
 	{
-		public string GenerateCode(IRProgram tupleIR)
+		public string GenerateCode(LowerIRProgram ir)
 		{
 			string codeHeader = """
 // ───────────────────────────────────────────────────────────
@@ -22,7 +22,7 @@ namespace RISClet_Compiler
 """;
             System.Text.StringBuilder dataSectionBuilder = new();
             // Variables
-            foreach (KeyValuePair<string, DataType> pair in tupleIR.Variables)
+            foreach (KeyValuePair<string, (DataType, string)> pair in ir.Variables)
 			{
 				dataSectionBuilder.Append(Constants.Indentation + IRVariableToAssembly(pair) + '\n');
 			}
@@ -34,9 +34,9 @@ _start:
 """;
 			System.Text.StringBuilder textSectionBuilder = new();
             // Instructions
-            for (int i = 0; i < tupleIR.Instructions.Count; i++)
+            for (int i = 0; i < ir.Instructions.Count; i++)
 			{
-				string[] assemblyInstructions = IRInstructionToAssembly(tupleIR.Instructions[i]);
+				string[] assemblyInstructions = IRInstructionToAssembly(ir.Instructions[i]);
 				foreach (string instruction in assemblyInstructions)
 				{
 					textSectionBuilder.Append(Constants.Indentation + instruction + '\n');
@@ -67,147 +67,71 @@ _start:
 		}
 
 		// [ASSUMPTION]: Assumes all values are Int32. TODO: Add support for multiple data types (in future stages)
-		public static string[] IRInstructionToAssembly(IRInstruction instruction)
+		public static string[] IRInstructionToAssembly(LowerIRInstruction instruction)
 		{
 			List<string> instructions = new();
 
-            // Case 1: IRVariableDeclarationInstruction
-			if (instruction is IRVariableDeclarationInstruction varDeclare)
+			// Case 1: Subroutine Call
+			if (instruction is SubroutineCall subCall)
 			{
-				// If there's no value given to it, no need to add an instruction for it; it's already in .section .data
-				if (varDeclare.Value != null)
-				{
-					// Need the address, but since it's overwriting it, there's no need to load its value...
-					// Then, assign whatever has been given to it
-					instructions.Add(LoadVariableAddress(Constants.FirstVarRegister, varDeclare.VarIdent));
-                    if (varDeclare.Value is TempDataItem t)
-					{
-                        instructions.Add(MoveRegisterIntoRegister(Constants.FirstVarRegister + 1, t.tempVarID + Constants.FirstScratchpadRegister));
-                    }
-					else
-					{
-                        instructions.Add(MoveLiteralIntoRegister(Constants.FirstVarRegister + 1, varDeclare.Value.IntLiteral.Value));
-                    }
-					instructions.Add(StoreVariableValue(Constants.FirstVarRegister + 1, Constants.FirstVarRegister));
-                }
+				instructions.Add($"bl {SubroutineIdentifier(subCall.Ident)}");
 			}
 
-            // Case 2: IRVariableAssignmentInstruction
-            else if (instruction is IRVariableAssignmentInstruction varAssign)
-            {
-                // Need the address, but since it's overwriting it, there's no need to load its value...
-                // Then, assign whatever has been given to it
-                instructions.Add(LoadVariableAddress(Constants.FirstVarRegister, varAssign.VarIdent));
-                if (varAssign.Value is TempDataItem t)
-                {
-                    instructions.Add(MoveRegisterIntoRegister(Constants.FirstVarRegister + 1, t.tempVarID + Constants.FirstScratchpadRegister));
-                }
-                else
-                {
-                    instructions.Add(MoveLiteralIntoRegister(Constants.FirstVarRegister + 1, varAssign.Value.IntLiteral.Value));
-                }
-                instructions.Add(StoreVariableValue(Constants.FirstVarRegister + 1, Constants.FirstVarRegister));
+			// Case 2: Binary Operation
+			else if (instruction is BinaryOperation binOp)
+			{
+				// [ASSUMPTION]: Only these 4 operations are allowed
+				string op = binOp.OpType switch
+				{
+					BinaryOpType.Add => "add",
+                    BinaryOpType.Subtract => "sub",
+                    BinaryOpType.Multiply => "mul",
+                    BinaryOpType.Divide => "sdiv",
+                };
+
+				instructions.Add($"{op} x{ProcessRegisterID(binOp.Result)}, x{ProcessRegisterID(binOp.Left)}, x{ProcessRegisterID(binOp.Right)}");
+			}
+
+			// Case 3: Copying Registers (mov)
+			else if (instruction is CopyRegister regCopy)
+			{
+				instructions.Add($"mov x{ProcessRegisterID(regCopy.Destination)}, x{ProcessRegisterID(regCopy.Source)}");
+			}
+
+			// Case 4: Loading Literals (mov with #literal)
+			else if (instruction is LiteralLoad litLoad)
+			{
+                instructions.Add($"mov x{ProcessRegisterID(litLoad.Register)}, #{litLoad.Value}");
             }
 
-            // Case 3: IRSubroutineCallInstruction
-            else if (instruction is IRSubroutineCallInstruction subCall)
-            {
-                // [ASSUMPTION]: Assumes a single parameter, and assumes that the parameter is just a variable (or literal). No temporary variables or complex expressions in subroutine parameters right now
-
-                if (subCall.Parameters[0].Type == DataItemType.Identifier)
-                {
-                    instructions.Add(LoadVariableAddress(0, subCall.Parameters[0].Identifier));
-                    instructions.Add(LoadVariableValue(0, 0));
-                }
-                else
-                {
-                    instructions.Add(MoveLiteralIntoRegister(0, subCall.Parameters[0].IntLiteral.Value));
-                }
-
-                instructions.Add("bl " + SubroutineIdentifier(subCall.SubroutineIdent));
+			// Case 5: Loading Variables (ldr)
+			else if (instruction is VariableLoad varLoad)
+			{
+                instructions.Add($"ldr x{ProcessRegisterID(varLoad.Register)}, ={varLoad.Ident}");
+                //instructions.Add($"ldr w{ProcessRegisterID(varLoad.Register)}, [x{ProcessRegisterID(varLoad.Register)}]");
+				instructions.Add($"ldrsw x{ProcessRegisterID(varLoad.Register)}, [x{ProcessRegisterID(varLoad.Register)}]");
             }
 
-            // Case 4: IRBinaryOperationInstruction
-            else if (instruction is IRBinaryOperationInstruction binOp)
-            {
-                instructions.AddRange(BinaryOperationInstruction(binOp));
+			// Case 6: Variable Store (str)
+			else if (instruction is VariableStore varStore)
+			{
+                instructions.Add($"ldr x{ProcessRegisterID(varStore.AddressRegister)}, ={varStore.Ident}");
+                instructions.Add($"str w{ProcessRegisterID(varStore.SourceRegister)}, [x{ProcessRegisterID(varStore.AddressRegister)}]");
             }
 
             return instructions.ToArray();
 		}
 
-        // [ASSUMPTION]: This only assumes 4 types of operation: Add, subtract, multiply, and divide. This also assumes no temp registers WITHIN a binary operation (only involvement is in storing results of it)
-        public static List<string> BinaryOperationInstruction(IRBinaryOperationInstruction binaryOperation)
-        {
-            List<string> instructions = new();
-
-            // Best practise: Load the addresses and values of the variables used (if necessary), and load the literals into separate registers
-            int nextFreeRegister = Constants.FirstVarRegister;
-            int leftReg = 0;
-            int rightReg = 0;
-
-            if (binaryOperation.Left.Type == DataItemType.Identifier)
-            {
-                // Variable
-                instructions.Add(LoadVariableAddress(nextFreeRegister, binaryOperation.Left.Identifier));
-                instructions.Add(LoadVariableValue(nextFreeRegister + 1, nextFreeRegister));
-
-                leftReg = nextFreeRegister + 1;
-                nextFreeRegister += 2;
-            }
-            else
-            {
-                // Literal
-                instructions.Add(MoveLiteralIntoRegister(nextFreeRegister, binaryOperation.Left.IntLiteral.Value));
-
-                leftReg = nextFreeRegister;
-                nextFreeRegister += 1;
-            }
-
-            if (binaryOperation.Right.Type == DataItemType.Identifier)
-            {
-                // Variable
-                instructions.Add(LoadVariableAddress(nextFreeRegister, binaryOperation.Right.Identifier));
-                instructions.Add(LoadVariableValue(nextFreeRegister + 1, nextFreeRegister));
-
-                rightReg = nextFreeRegister + 1;
-                nextFreeRegister += 2;
-            }
-            else
-            {
-                // Literal
-                instructions.Add(MoveLiteralIntoRegister(nextFreeRegister, binaryOperation.Right.IntLiteral.Value));
-
-                rightReg = nextFreeRegister;
-                nextFreeRegister += 1;
-            }
-
-            string? operationType = binaryOperation.OpType switch
-            {
-                BinaryOpType.Add => "add",
-                BinaryOpType.Subtract => "sub",
-                BinaryOpType.Multiply => "mul",
-                BinaryOpType.Divide => "sdiv", // [ASSUMPTION]: Assumes signed division (no generic division instruction in ARMv8)
-                _ => null
-            };
-            if (operationType == null) ErrorReporter.CompilerError("Invalid operation type " + binaryOperation.OpType, (-1, -1));
-
-            string operation = $"{operationType} w{binaryOperation.TempID + Constants.FirstScratchpadRegister}, w{leftReg}, w{rightReg}";
-            instructions.Add(operation);
-
-            return instructions;
-        }
-
-        public static string MoveRegisterIntoRegister(int dest, int source) => $"mov x{dest}, x{source}";
-        public static string MoveLiteralIntoRegister(int dest, int value) => $"mov w{dest}, #{value}";
-
-        public static string LoadVariableAddress(int destReg, string ident) => $"ldr x{destReg}, ={ident}";
-        public static string LoadVariableValue(int destReg, int addrReg) => $"ldrsw x{destReg}, [x{addrReg}]"; // [ASSUMPTION] Int32, based on sign extending and use of w register
-        public static string StoreVariableValue(int sourceReg, int addrReg) => $"str w{sourceReg}, [x{addrReg}]"; // [ASSUMPTION] Int32
-
-        public static string IRVariableToAssembly(KeyValuePair<string, DataType> variable)
+        public static string IRVariableToAssembly(KeyValuePair<string, (DataType, string?)> variable)
 		{
-			return variable.Key + ": " + DataTypeToAssembly(variable.Value) + " " + Constants.DataTypeDefaultValue(variable.Value);
+            if (variable.Value.Item2 == null)
+            {
+                return variable.Key + ": " + DataTypeToAssembly(variable.Value.Item1) + " " + Constants.DataTypeDefaultValue(variable.Value.Item1);
+            }
+            else
+            {
+                return variable.Key + ": " + DataTypeToAssembly(variable.Value.Item1) + " " + variable.Value.Item2;
+            }
 		}
 
         public static string SubroutineIdentifier(string subroutineIdent)
@@ -218,6 +142,16 @@ _start:
                 _ => subroutineIdent
             };
         }
+
+		public static int ProcessRegisterID(RegisterID regId)
+		{
+			return regId.Type switch
+			{
+				RegisterType.Parameter => regId.ID,
+				RegisterType.Variable => regId.ID + Constants.FirstVarRegister,
+                RegisterType.Temp => regId.ID + Constants.FirstScratchpadRegister,
+            };
+		}
 
 		public static string DataTypeToAssembly(DataType type)
 		{

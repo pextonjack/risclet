@@ -29,12 +29,23 @@ class Program
             Console.WriteLine(n.GetType().ToString());
         }
 
-        Console.WriteLine("\n\nIR:");
-        var ir = new TupleIR().GenerateTupleIR(ast);
-        Console.WriteLine(ir.ToString());
+        Console.WriteLine("\n\nTuple IR:");
+        var tupleIr = new TupleIR().GenerateTupleIR(ast);
+        Console.WriteLine(tupleIr.ToString());
+
+        //Console.WriteLine("\n\nAssembly:");
+        //var code = new CodeGenerator().GenerateCode(ir);
+        //Console.WriteLine(code);
+
+        Console.WriteLine("\n\nLower IR:");
+        var lowerIr = new LowerIR().GenerateLowerIR(tupleIr);
+        foreach (LowerIRInstruction instruction in lowerIr.Instructions)
+        {
+            Console.WriteLine(instruction.GetType().ToString());
+        }
 
         Console.WriteLine("\n\nAssembly:");
-        var code = new CodeGenerator().GenerateCode(ir);
+        var code = new CodeGenerator().GenerateCode(lowerIr);
         Console.WriteLine(code);
 
         new FileManager().SaveText("/Users/jackpexton/Desktop/risclet/prog.s", code);

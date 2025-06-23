@@ -8,7 +8,7 @@ namespace RISClet_Compiler
 			variables = new();
 		}
 
-        private Dictionary<string, (DataType, string)> variables = new();
+        private Dictionary<string, (DataType, string?)> variables = new();
 
         public LowerIRProgram GenerateLowerIR(IRProgram tupleProg)
 		{
@@ -17,7 +17,7 @@ namespace RISClet_Compiler
 			
 			foreach (KeyValuePair<string, DataType> pair in tupleProg.Variables)
 			{
-				variables.Add(pair.Key, (pair.Value, "0"));
+				variables.Add(pair.Key, (pair.Value, null));
 			}
 
             for (int i = 0; i < tupleProg.Instructions.Count; i++)
@@ -38,18 +38,25 @@ namespace RISClet_Compiler
 			// Case 1: Variable declaration
 			if (tupleIR is IRVariableDeclarationInstruction varDeclare)
 			{
-				// A: No initialiser
-				if (varDeclare.Value == null)
+                // A: Temp initialiser
+                if (varDeclare.Value is TempDataItem temp)
+                {
+                    // Load address into v0, store value from specified temp reg in [v0] (address of variable)
+                    lowerIRInstructions.Add(new VariableStore(varDeclare.VarIdent, new RegisterID(RegisterType.Variable, 0), new RegisterID(RegisterType.Temp, temp.tempVarID)));
+                }
+
+                // B: No initialiser
+                else if (varDeclare.Value == null)
 				{
 				}
 
-				// B: Literal initialiser
+				// C: Literal initialiser
 				else if (varDeclare.Value.Type == DataItemType.IntLiteral)
 				{
                     variables[varDeclare.VarIdent] = (variables[varDeclare.VarIdent].Item1, varDeclare.Value.IntLiteral.Value.ToString());
                 }
 
-				// C: Identifier initialiser
+				// D: Identifier initialiser
 				else if (varDeclare.Value.Type == DataItemType.Identifier)
 				{
 					// Load variable into SECOND variable register (v1)
@@ -58,37 +65,30 @@ namespace RISClet_Compiler
                     // Load address into v0, store value from v1 in [v0] (address of variable)
                     lowerIRInstructions.Add(new VariableStore(varDeclare.VarIdent, new RegisterID(RegisterType.Variable, 0), new RegisterID(RegisterType.Variable, 1)));
                 }
-
-				// D: Temp initialiser
-				else if (varDeclare.Value is TempDataItem temp)
-				{
-                    // Load address into v0, store value from specified temp reg in [v0] (address of variable)
-                    lowerIRInstructions.Add(new VariableStore(varDeclare.VarIdent, new RegisterID(RegisterType.Variable, 0), new RegisterID(RegisterType.Temp, temp.tempVarID)));
-                }
             }
 
             // Case 2: Variable assignment
             else if (tupleIR is IRVariableAssignmentInstruction varAssign)
             {
-                // A: Literal initialiser
-                if (varAssign.Value.Type == DataItemType.IntLiteral)
+				// A: Temp initialiser
+                if (varAssign.Value is TempDataItem temp)
+                {
+                    lowerIRInstructions.Add(new VariableStore(varAssign.VarIdent, new RegisterID(RegisterType.Variable, 0), new RegisterID(RegisterType.Temp, temp.tempVarID)));
+                }
+
+                // B: Literal initialiser
+                else if (varAssign.Value.Type == DataItemType.IntLiteral)
                 {
 					lowerIRInstructions.Add(new LiteralLoad(new RegisterID(RegisterType.Variable, 1), varAssign.Value.IntLiteral.Value));
                     lowerIRInstructions.Add(new VariableStore(varAssign.VarIdent, new RegisterID(RegisterType.Variable, 0), new RegisterID(RegisterType.Variable, 1)));
                 }
 
-                // B: Identifier initialiser
+                // C: Identifier initialiser
                 else if (varAssign.Value.Type == DataItemType.Identifier)
                 {
                     // Load variable into SECOND variable register (v1)
                     lowerIRInstructions.Add(new VariableLoad(varAssign.Value.Identifier, new RegisterID(RegisterType.Variable, 1)));
                     lowerIRInstructions.Add(new VariableStore(varAssign.VarIdent, new RegisterID(RegisterType.Variable, 0), new RegisterID(RegisterType.Variable, 1)));
-                }
-
-                // C: Temp initialiser
-                else if (varAssign.Value is TempDataItem temp)
-                {
-                    lowerIRInstructions.Add(new VariableStore(varAssign.VarIdent, new RegisterID(RegisterType.Variable, 0), new RegisterID(RegisterType.Temp, temp.tempVarID)));
                 }
             }
 
@@ -97,7 +97,7 @@ namespace RISClet_Compiler
             {
 				// [ASSUMPTION]: Only a single parameter, with only a single ident/literal (no expressions)
 
-				LoadValue(subCall.Parameters[0], 0, RegisterType.Parameter);
+				lowerIRInstructions.Add(LoadValue(subCall.Parameters[0], 0, RegisterType.Parameter));
 				lowerIRInstructions.Add(new SubroutineCall(subCall.SubroutineIdent));
             }
 
@@ -166,9 +166,9 @@ namespace RISClet_Compiler
 	public class LowerIRProgram
 	{
         public List<LowerIRInstruction> Instructions { get; set; }
-        public Dictionary<string, (DataType, string)> Variables { get; set; }
+        public Dictionary<string, (DataType, string?)> Variables { get; set; }
 
-        public LowerIRProgram(List<LowerIRInstruction> instructions, Dictionary<string, (DataType, string)> variables)
+        public LowerIRProgram(List<LowerIRInstruction> instructions, Dictionary<string, (DataType, string?)> variables)
         {
             Instructions = instructions;
             Variables = variables;

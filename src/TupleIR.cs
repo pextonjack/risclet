@@ -151,7 +151,7 @@ namespace RISClet_Compiler
         {
 			System.Text.StringBuilder s = new();
 
-			s.Append("Tuple IR: \n");
+			//s.Append("Tuple IR: \n");
 			for (int i = 0; i < Instructions.Count; i++)
 			{
 				s.Append(Instructions[i].ToString() + '\n');
