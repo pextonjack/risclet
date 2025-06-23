@@ -4,9 +4,9 @@ namespace RISClet_Compiler
 	/// <summary>
 	/// Generates IR from ASTs
 	/// </summary>
-	public class IR
+	public class TupleIR
 	{
-		public IR()
+		public TupleIR()
 		{
 			variables = new();
         }

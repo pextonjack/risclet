@@ -110,9 +110,12 @@ namespace RISClet_Compiler
                 return ParseAtomic(tokens[0]);
             }
 
-            if (tokens.Count == 2)
+            // Most likely a negative value
+            // [ASSUMPTION]: This DOES NOT work with a) variables and b) unary operators within expressions (a recursive descent parser is needed for that)
+            if (tokens.Count == 2 && (tokens[0].Type == TokenType.Subtract && tokens[1].Type == TokenType.IntLiteral))
             {
-                ErrorReporter.CompilerError($"Malformed expression: ({tokens[0]}, {tokens[1]})", (tokens[0].Line, tokens[0].Column));
+                //ErrorReporter.CompilerError($"Malformed expression: ({tokens[0]}, {tokens[1]})", (tokens[0].Line, tokens[0].Column));
+                return new IntegerLiteralNode(-int.Parse(tokens[1].Lexeme));
             }
 
             BinaryOpType? op = tokens[1].Type switch
